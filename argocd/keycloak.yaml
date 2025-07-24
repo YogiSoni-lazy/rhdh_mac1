@@ -11,7 +11,7 @@ spec:
   project: default
   source:
     path: keycloak
-    repoURL: https://github.com/YogiSoni-lazy/rhdh-mac1.git
+    repoURL: https://github.com/YogiSoni-lazy/rhdh_mac1.git
     targetRevision: phase-1-work
   syncPolicy:
     automated:
