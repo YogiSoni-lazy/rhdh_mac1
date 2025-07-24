@@ -1,0 +1,80 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: git-clone-pipeline
+  namespace: demo-project
+spec:
+  params:
+    - name: repo-url
+      type: string
+      default: "https://github.com/ysoni-redhat/spring-rhdhtest18.git"
+    - name: revision
+      type: string
+      default: "main"
+    - name: argocd-server
+      type: string
+      default: "svc/openshift-gitops-server:8080"
+    - name: argocd-username
+      type: string
+      default: "admin"
+    - name: argocd-password
+      type: string
+      default: "4BxbuHDeyr8PpLT67IgRtQZVNqWkajv1"
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: clone-repo
+      taskRef:
+        name: git-clone
+        kind: ClusterTask
+        apiVersion: tekton.dev/v1beta1
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.revision)
+        - name: deleteExisting
+          value: "true"
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+
+    - name: apply-and-sync-argocd
+      runAfter:
+        - clone-repo
+      taskSpec:
+        params:
+          - name: argocd-server
+          - name: argocd-username
+          - name: argocd-password
+        workspaces:
+          - name: shared-workspace
+        steps:
+          - name: apply-argocd-app
+            image: quay.io/argoproj/argocd:v2.9.3
+            script: |
+              #!/bin/sh
+              echo "Logging into ArgoCD..."
+              argocd login $(params.argocd-server) \
+                --username $(params.argocd-username) \
+                --password $(params.argocd-password) \
+                --insecure
+
+              echo "Applying ArgoCD Application..."
+              kubectl apply -f /workspace/shared-workspace/deploy/k8/springboot_image.yaml
+
+              echo "Syncing application..."
+              argocd app sync springboot-image-build --insecure
+
+              echo "Done."
+      params:  # this section is missing and must be added
+        - name: argocd-server
+          value: $(params.argocd-server)
+        - name: argocd-username
+          value: $(params.argocd-username)
+        - name: argocd-password
+          value: $(params.argocd-password)
+      workspaces:
+        - name: shared-workspace
+          workspace: shared-workspace
+

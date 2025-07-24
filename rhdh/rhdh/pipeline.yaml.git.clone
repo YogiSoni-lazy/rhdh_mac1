@@ -1,0 +1,39 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: simple-git-clone
+  namespace: demo-project
+spec:
+  params:
+    - name: GIT_URL
+      type: string
+      description: The git repository URL to clone
+      default: "https://github.com/ysoni-redhat/spring-rhdhtest18.git"
+    - name: GIT_REVISION
+      type: string
+      default: main
+      description: The git revision (branch, tag, commit)
+    - name: GIT_INIT_IMAGE
+      type: string
+      default: registry.redhat.io/openshift-pipelines/pipelines-git-init-rhel8@sha256:c4b2183f7c7997bd401d86b33eefb637b3ef2fa90618e875106292cd69a15c14
+      description: Git init image to be used
+  workspaces:
+    - name: output
+  tasks:
+    - name: clone-repo
+      taskRef:
+        kind: Task
+        name: git-clone
+      params:
+        - name: url
+          value: $(params.GIT_URL)
+        - name: revision
+          value: $(params.GIT_REVISION)
+        - name: deleteExisting
+          value: 'true'
+        - name: gitInitImage
+          value: $(params.GIT_INIT_IMAGE)
+      workspaces:
+        - name: output
+          workspace: output
+
